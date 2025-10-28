@@ -1,6 +1,5 @@
 package com.bloomfilter;
 
-import com.bloomfilter.ClassicBloomFilter;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,7 +19,18 @@ public class BloomFilterTest {
     @Test
     public void testNoFalseNegatives() {
         ClassicBloomFilter<String> filter = new ClassicBloomFilter<>(1000, 3);
-        String[] elements = {"apple", "banana", "cherry", "date", "elderberry"};
+        String[] elements = {"Apple","Apricot","Avocado","Banana","Blackberry","Blueberry","Boysenberry","Cantaloupe",
+                "Cherry","Clementine","Coconut","Cranberry","Currant","Date","Dragonfruit","Durian","Elderberry",
+                "Feijoa","Fig","Goji berry","Gooseberry","Grape","Grapefruit","Guava","Honeydew","Jackfruit",
+                "Jujube","Kiwano","Kiwi","Kumquat","Lemon","Lime","Longan","Loquat","Lychee","Mamey","Mango",
+                "Mangosteen","Marionberry","Melon","Mulberry","Nance","Nectarine","Orange","Papaya","Passionfruit",
+                "Peach","Pear","Persimmon","Pineapple","Pitahaya","Plantain","Plum","Pomegranate","Pomelo","Prickly pear",
+                "Quince","Raspberry","Red currant","Salak","Satsuma","Sapodilla","Sapote","Star apple","Starfruit",
+                "Strawberry","Surinam cherry","Tamarillo","Tamarind","Tangerine","Ugli fruit","Watermelon","White currant",
+                "Yuzu","Ziziphus","Ackee","African cucumber","Bignay","Breadfruit","Camu camu","Canistel","Carambola",
+                "Chico fruit","Crowberry","Damson","Desert lime","Emu apple","Gac","Hog plum","Illawarra plum",
+                "Jaboticaba","Kaffir lime","Langsat","Miracle fruit","Monstera deliciosa","Mountain papaya","Pepino",
+                "Physalis","Santol","Soncoya","Sugar apple","Velvet apple","Wolfberry","Yumberry"};
         for (String e : elements) {
             filter.add(e);
         }
