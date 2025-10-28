@@ -2,28 +2,37 @@ package com.bloomfilter.demo;
 
 import com.bloomfilter.*;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.BitSet;
 import java.util.Scanner;
 
 /**
  * Interactive console demo for learning Bloom filters.
  * Commands:
- *   mode classic|counting|partitioned
- *   add <word>
- *   check <word>
- *   remove <word>
- *   clear
- *   info
- *   help
- *   exit
+ * mode classic|counting|partitioned
+ * add <word>
+ * check <word>
+ * remove <word>
+ * clear
+ * info
+ * help
+ * exit
  */
 public class InteractiveBloomDemo {
 
     private static MembershipFilter<String> filter;
     private static String mode = "classic";
-    private static String green(String msg) { return "\u001B[32m" + msg + "\u001B[0m"; }
-    private static String red(String msg)   { return "\u001B[31m" + msg + "\u001B[0m"; }
+
+    private static String green(String msg) {
+        return "\u001B[32m" + msg + "\u001B[0m";
+    }
+
+    private static String red(String msg) {
+        return "\u001B[31m" + msg + "\u001B[0m";
+    }
 
 
     public static void main(String[] args) {
@@ -80,7 +89,6 @@ public class InteractiveBloomDemo {
                     }
                     break;
 
-
                 case "clear":
                     filter.clear();
                     System.out.println("Filter cleared.");
@@ -118,12 +126,61 @@ public class InteractiveBloomDemo {
                         System.out.println(red("Usage: load <filename>"));
                         break;
                     }
-                    try {
-                        FilterIO.loadFromFile(filter, arg);
-                        System.out.println(green("Filter loaded from " + arg));
+                    File file = new File(arg);
+                    if (!file.exists()) {
+                        System.out.println(red("File not found: " + arg));
+                        break;
+                    }
+
+                    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+                        Object first = ois.readObject();
+
+                        if (first instanceof FilterMetadata meta) {
+                            // --- Standardized binary format ---
+                            byte[] data = (byte[]) ois.readObject();
+                            filter.fromBytes(data);
+                            System.out.println(green("Standardized filter loaded successfully."));
+                            System.out.println(green(meta.summary()));
+                        } else if (first instanceof byte[] bytes) {
+                            // --- Legacy format (raw filter bytes only) ---
+                            filter.fromBytes(bytes);
+                            System.out.println(green("Legacy filter loaded successfully."));
+                        } else {
+                            System.out.println(red("Unrecognized file format: " + arg));
+                        }
                         visualize();
-                    } catch (IOException e) {
+
+                    } catch (IOException | ClassNotFoundException e) {
                         System.out.println(red("Error loading: " + e.getMessage()));
+                    }
+                    break;
+
+                case "loadstd":
+                    if (arg == null) {
+                        System.out.println(red("Usage: loadstd <filename>"));
+                        break;
+                    }
+                    try {
+                        var loadResult = FilterIO.loadStandardizedBinary(filter, arg);
+                        System.out.println(green("Standardized filter loaded successfully."));
+                        System.out.println(green(loadResult.metadata().summary()));
+                        visualize();
+                    } catch (IOException | ClassNotFoundException e) {
+                        System.out.println(red("Error loading standardized binary: " + e.getMessage()));
+                    }
+                    break;
+
+                case "loadmeta":
+                    if (arg == null) {
+                        System.out.println(red("Usage: loadmeta <filename>"));
+                        break;
+                    }
+                    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(arg))) {
+                        FilterMetadata meta = (FilterMetadata) ois.readObject();
+                        System.out.println(green("Metadata for " + arg + ":"));
+                        System.out.println(meta.summary());
+                    } catch (Exception e) {
+                        System.out.println(red("Error reading metadata: " + e.getMessage()));
                     }
                     break;
 
@@ -146,16 +203,32 @@ public class InteractiveBloomDemo {
 
                 case "crossload":
                     if (arg == null) {
-                        System.out.println(green("Usage: crossload <filename>"));
+                        System.out.println(red("Usage: crossload <filename>"));
                         break;
                     }
-                    try {
-                        FilterIO.populateFromList(filter, arg);
-                        System.out.println(green(String.format(
-                                "Cross-loaded %s filter with list from %s",
-                                mode, arg)));
+                    File xFile = new File(arg);
+                    if (!xFile.exists()) {
+                        System.out.println(red("File not found: " + arg));
+                        break;
+                    }
+
+                    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(xFile))) {
+                        Object first = ois.readObject();
+
+                        if (first instanceof FilterMetadata meta) {
+                            byte[] data = (byte[]) ois.readObject();
+                            filter.fromBytes(data);
+                            System.out.println(green("Standardized filter cross-loaded successfully."));
+                            System.out.println(green(meta.summary()));
+                        } else if (first instanceof byte[] bytes) {
+                            filter.fromBytes(bytes);
+                            System.out.println(green("Legacy filter cross-loaded successfully."));
+                        } else {
+                            System.out.println(red("Unrecognized file format: " + arg));
+                        }
                         visualize();
-                    } catch (IOException e) {
+
+                    } catch (IOException | ClassNotFoundException e) {
                         System.out.println(red("Error cross-loading: " + e.getMessage()));
                     }
                     break;
@@ -180,8 +253,6 @@ public class InteractiveBloomDemo {
                         System.out.println(red("Error during ingestion: " + e.getMessage()));
                     }
                     break;
-
-
 
                 case "help":
                     printHelp();
@@ -226,21 +297,23 @@ public class InteractiveBloomDemo {
 
     private static void printHelp() {
         System.out.println("""
-            Commands:
-              add <word>             – insert element
-              check <word>           – test membership
-              remove <word>          – remove (only in counting mode)
-              clear                  – reset filter
-              mode <type>            – switch between classic|counting|partitioned
-              info                   – show current statistics
-              save <filename>        – save current filter to file
-              load <filename>        – load saved filter from file
-              loadlist <file>        – load a plain-text word list
-              ingestlist <txt> <bin> – convert plain list to standardized binary filter
-              crossload <file>       – repopulate this mode from a word list
-              help                   – show this list
-              exit                   – quit the demo
-            """);
+                Commands:
+                  add <word>             – insert element
+                  check <word>           – test membership
+                  remove <word>          – remove (only in counting mode)
+                  clear                  – reset filter
+                  mode <type>            – switch between classic|counting|partitioned
+                  info                   – show current statistics
+                  save <filename>        – save current filter to file
+                  load <filename>        – load saved filter from file
+                  loadstd <file>     – load standardized .bin (with metadata)
+                  loadmeta <file>    – inspect metadata header only
+                  loadlist <file>        – load a plain-text word list
+                  ingestlist <txt> <bin> – convert plain list to standardized binary filter
+                  crossload <file>       – repopulate this mode from a word list
+                  help                   – show this list
+                  exit                   – quit the demo
+                """);
     }
 
     // ------------------------------------------------------------------------
