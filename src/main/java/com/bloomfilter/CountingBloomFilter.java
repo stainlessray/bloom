@@ -77,10 +77,10 @@ public class CountingBloomFilter<T> extends AbstractBloomFilter<T> {
             counters[i] = 0;
         }
     }
-
     @Override
     public byte[] toBytes() {
-        ByteBuffer buffer = ByteBuffer.allocate(4 + 4 + 8 + 4 + counters.length * 4).order(ByteOrder.BIG_ENDIAN);
+        ByteBuffer buffer = ByteBuffer.allocate(4 + 4 + 8 + 4 + counters.length * 4)
+                                      .order(ByteOrder.BIG_ENDIAN);
         buffer.putInt(bitArraySize);
         buffer.putInt(numHashFunctions);
         buffer.putLong(itemCount);
@@ -90,6 +90,13 @@ public class CountingBloomFilter<T> extends AbstractBloomFilter<T> {
         }
         return buffer.array();
     }
+
+    @Override
+    public void clear() {
+        // Reset all counters and the item count via the base class implementation
+        super.clear();
+    }
+
 
     @Override
     public void fromBytes(byte[] data) {
