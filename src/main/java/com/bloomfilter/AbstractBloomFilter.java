@@ -11,29 +11,38 @@ import java.util.Arrays;
  * @param <T> element type handled by the filter
  */
 public abstract class AbstractBloomFilter<T> implements MembershipFilter<T> {
+
+    /** Size of the bit array (m). */
     protected final int bitArraySize;
 
-    public int getBitArraySize() {
-        return bitArraySize;
-    }
+    /** Number of hash functions (k). */
+    protected final int hashCount;
 
-    protected final int numHashFunctions;
+    /** Estimated number of inserted elements. */
     protected long itemCount;
 
     /** Enables console explanations for learning mode. */
     protected boolean verbose = false;
 
+    // ------------------------------------------------------------
+    // Constructors and configuration
+    // ------------------------------------------------------------
+
+    protected AbstractBloomFilter(int bitArraySize, int hashCount) {
+        if (bitArraySize <= 0) throw new IllegalArgumentException("bitArraySize must be positive");
+        if (hashCount <= 0) throw new IllegalArgumentException("hashCount must be positive");
+        this.bitArraySize = bitArraySize;
+        this.hashCount = hashCount;
+        this.itemCount = 0;
+    }
+
     public void setVerbose(boolean verbose) {
         this.verbose = verbose;
     }
 
-    protected AbstractBloomFilter(int bitArraySize, int numHashFunctions) {
-        if (bitArraySize <= 0) throw new IllegalArgumentException("bitArraySize must be positive");
-        if (numHashFunctions <= 0) throw new IllegalArgumentException("numHashFunctions must be positive");
-        this.bitArraySize = bitArraySize;
-        this.numHashFunctions = numHashFunctions;
-        this.itemCount = 0;
-    }
+    // ------------------------------------------------------------
+    // Core operations
+    // ------------------------------------------------------------
 
     @Override
     public void add(T element) {
@@ -82,17 +91,25 @@ public abstract class AbstractBloomFilter<T> implements MembershipFilter<T> {
     @Override
     public double estimateFalsePositiveRate() {
         double m = bitArraySize;
-        double k = numHashFunctions;
+        double k = hashCount;
         double n = itemCount;
         double fpr = Math.pow(1 - Math.exp(-k * n / m), k);
         if (verbose) System.out.printf("Estimating FPR (m=%f, k=%f, n=%f) = %f%n", m, k, n, fpr);
         return fpr;
     }
 
+    // ------------------------------------------------------------
+    // Abstract hooks for concrete filters
+    // ------------------------------------------------------------
+
     protected abstract int[] getHashIndices(T element);
     protected abstract void setBit(int index);
     protected abstract boolean getBit(int index);
     protected abstract void clearBit(int index);
+
+    // ------------------------------------------------------------
+    // Serialization stubs
+    // ------------------------------------------------------------
 
     @Override
     public byte[] toBytes() {
@@ -102,5 +119,19 @@ public abstract class AbstractBloomFilter<T> implements MembershipFilter<T> {
     @Override
     public void fromBytes(byte[] data) {
         throw new UnsupportedOperationException("Concrete filters must implement deserialization");
+    }
+
+    // ------------------------------------------------------------
+    // Accessors for metadata / introspection
+    // ------------------------------------------------------------
+
+    /** Returns the number of hash functions (k). */
+    public int getHashCount() {
+        return this.hashCount;
+    }
+
+    /** Returns the size of the bit array (m). */
+    public int getBitArraySize() {
+        return this.bitArraySize;
     }
 }

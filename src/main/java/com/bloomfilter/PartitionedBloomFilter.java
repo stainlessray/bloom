@@ -98,7 +98,7 @@ public class PartitionedBloomFilter<T> extends AbstractBloomFilter<T> {
         ByteBuffer buffer = ByteBuffer.allocate(total).order(ByteOrder.BIG_ENDIAN);
         buffer.putInt(numPartitions);
         buffer.putInt(partitionSize);
-        buffer.putInt(numHashFunctions);
+        buffer.putInt(hashCount);
         buffer.putLong(itemCount);
         for (int i = 0; i < numPartitions; i++) {
             buffer.putInt(partsBytes[i].length);
@@ -118,7 +118,7 @@ public class PartitionedBloomFilter<T> extends AbstractBloomFilter<T> {
         long savedCount = buffer.getLong();
         if (savedPartitions != numPartitions ||
                 savedPartitionSize != partitionSize ||
-                savedNumHash != numHashFunctions) {
+                savedNumHash != hashCount) {
             throw new IllegalArgumentException("Serialized data does not match configuration");
         }
         for (int i = 0; i < numPartitions; i++) {

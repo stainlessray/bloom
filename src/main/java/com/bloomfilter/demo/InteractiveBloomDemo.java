@@ -2,6 +2,7 @@ package com.bloomfilter.demo;
 
 import com.bloomfilter.*;
 
+import java.io.IOException;
 import java.util.BitSet;
 import java.util.Scanner;
 
@@ -21,6 +22,9 @@ public class InteractiveBloomDemo {
 
     private static MembershipFilter<String> filter;
     private static String mode = "classic";
+    private static String green(String msg) { return "\u001B[32m" + msg + "\u001B[0m"; }
+    private static String red(String msg)   { return "\u001B[31m" + msg + "\u001B[0m"; }
+
 
     public static void main(String[] args) {
         System.out.println("\n=======================================");
@@ -96,6 +100,89 @@ public class InteractiveBloomDemo {
                     printInfo();
                     break;
 
+                case "save":
+                    if (arg == null) {
+                        System.out.println("Usage: save <filename>");
+                        break;
+                    }
+                    try {
+                        FilterIO.saveToFile(filter, arg);
+                        System.out.println(green("Filter saved to " + arg));
+                    } catch (IOException e) {
+                        System.out.println(red("Error saving: " + e.getMessage()));
+                    }
+                    break;
+
+                case "load":
+                    if (arg == null) {
+                        System.out.println(red("Usage: load <filename>"));
+                        break;
+                    }
+                    try {
+                        FilterIO.loadFromFile(filter, arg);
+                        System.out.println(green("Filter loaded from " + arg));
+                        visualize();
+                    } catch (IOException e) {
+                        System.out.println(red("Error loading: " + e.getMessage()));
+                    }
+                    break;
+
+                case "loadlist":
+                    if (arg == null) {
+                        System.out.println(green("Usage: loadlist <filename>"));
+                        break;
+                    }
+                    try {
+                        var words = FilterIO.loadWordList(arg);
+                        System.out.println(green(String.format("Loaded %d words from %s", words.size(), arg)));
+                        for (String w : words) {
+                            filter.add(w);
+                        }
+                        visualize();
+                    } catch (IOException e) {
+                        System.out.println(red("Error loading list: " + e.getMessage()));
+                    }
+                    break;
+
+                case "crossload":
+                    if (arg == null) {
+                        System.out.println(green("Usage: crossload <filename>"));
+                        break;
+                    }
+                    try {
+                        FilterIO.populateFromList(filter, arg);
+                        System.out.println(green(String.format(
+                                "Cross-loaded %s filter with list from %s",
+                                mode, arg)));
+                        visualize();
+                    } catch (IOException e) {
+                        System.out.println(red("Error cross-loading: " + e.getMessage()));
+                    }
+                    break;
+
+                case "ingestlist":
+                    if (arg == null) {
+                        System.out.println(green("Usage: ingestlist <input.txt> <output.bin>"));
+                        break;
+                    }
+                    String[] files = arg.split("\\s+");
+                    if (files.length < 2) {
+                        System.out.println(red("Usage: ingestlist <input.txt> <output.bin>"));
+                        break;
+                    }
+                    String inputList = files[0];
+                    String outputBin = files[1];
+                    try {
+                        FilterIO.ingestListToBinary(filter, inputList, outputBin);
+                        System.out.println(green("Ingestion complete and saved to " + outputBin));
+                        visualize();
+                    } catch (IOException e) {
+                        System.out.println(red("Error during ingestion: " + e.getMessage()));
+                    }
+                    break;
+
+
+
                 case "help":
                     printHelp();
                     break;
@@ -106,7 +193,7 @@ public class InteractiveBloomDemo {
                     return;
 
                 default:
-                    System.out.println("Unknown command. Type 'help' for list.");
+                    System.out.println(red("Unknown command. Type 'help' for list."));
             }
         }
     }
@@ -140,14 +227,19 @@ public class InteractiveBloomDemo {
     private static void printHelp() {
         System.out.println("""
             Commands:
-              add <word>        – insert element
-              check <word>      – test membership
-              remove <word>     – remove (only in counting mode)
-              clear             – reset filter
-              mode <type>       – switch between classic|counting|partitioned
-              info              – show current statistics
-              help              – show this list
-              exit              – quit the demo
+              add <word>             – insert element
+              check <word>           – test membership
+              remove <word>          – remove (only in counting mode)
+              clear                  – reset filter
+              mode <type>            – switch between classic|counting|partitioned
+              info                   – show current statistics
+              save <filename>        – save current filter to file
+              load <filename>        – load saved filter from file
+              loadlist <file>        – load a plain-text word list
+              ingestlist <txt> <bin> – convert plain list to standardized binary filter
+              crossload <file>       – repopulate this mode from a word list
+              help                   – show this list
+              exit                   – quit the demo
             """);
     }
 

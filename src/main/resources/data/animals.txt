@@ -1,0 +1,10 @@
+ant
+bear
+cat
+dog
+elephant
+falcon
+giraffe
+hippo
+iguana
+jaguar

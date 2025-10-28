@@ -17,7 +17,7 @@ public class CountingBloomFilter<T> extends AbstractBloomFilter<T> {
     protected int[] getHashIndices(T element) {
         if (element == null) throw new NullPointerException("element");
         long[] hash = HashUtils.hash128(element.toString());
-        int[] indices = HashUtils.generateIndices(hash, numHashFunctions, bitArraySize);
+        int[] indices = HashUtils.generateIndices(hash, hashCount, bitArraySize);
         if (verbose)
             System.out.printf("Hashing '%s' → %s%n", element, Arrays.toString(indices));
         return indices;
@@ -56,11 +56,11 @@ public class CountingBloomFilter<T> extends AbstractBloomFilter<T> {
     public byte[] toBytes() {
         if (verbose)
             System.out.printf("Serializing CountingBloomFilter (size=%d, hashes=%d, count=%d)%n",
-                    bitArraySize, numHashFunctions, itemCount);
+                    bitArraySize, hashCount, itemCount);
         ByteBuffer buffer = ByteBuffer.allocate(4 + 4 + 8 + 4 + counters.length * 4)
                 .order(ByteOrder.BIG_ENDIAN);
         buffer.putInt(bitArraySize);
-        buffer.putInt(numHashFunctions);
+        buffer.putInt(hashCount);
         buffer.putLong(itemCount);
         buffer.putInt(counters.length);
         for (int value : counters) buffer.putInt(value);
@@ -76,7 +76,7 @@ public class CountingBloomFilter<T> extends AbstractBloomFilter<T> {
         int savedNumHash = buffer.getInt();
         long savedCount = buffer.getLong();
         int length = buffer.getInt();
-        if (savedSize != this.bitArraySize || savedNumHash != this.numHashFunctions)
+        if (savedSize != this.bitArraySize || savedNumHash != this.hashCount)
             throw new IllegalArgumentException("Serialized data does not match filter configuration");
         int[] newCounters = new int[length];
         for (int i = 0; i < length; i++) newCounters[i] = buffer.getInt();
