@@ -10,6 +10,11 @@ import java.nio.ByteOrder;
  */
 public class CountingBloomFilter<T> extends AbstractBloomFilter<T> {
 
+    /**
+     * Counter array backing the counting Bloom filter. Each position tracks how
+     * many times a given bit index has been set. When a counter is zero the
+     * corresponding bit is considered unset.
+     */
     private int[] counters;
 
     /**
@@ -50,7 +55,9 @@ public class CountingBloomFilter<T> extends AbstractBloomFilter<T> {
     }
 
     /**
-     * Removes an element from the filter by decrementing its counters.
+     * Removes an element from the filter by decrementing its counters. If a counter
+     * is already zero it is left unchanged. The overall item count is reduced as
+     * long as it remains positive.
      *
      * @param element the element to remove
      */
@@ -70,13 +77,25 @@ public class CountingBloomFilter<T> extends AbstractBloomFilter<T> {
         }
     }
 
+    /**
+     * Resets the filter to an empty state by delegating to the base class. The
+     * AbstractBloomFilter implementation invokes {@link #clearBit(int)} for every
+     * index, which resets all counters to zero and sets the item count to zero.
+     */
     @Override
     public void clear() {
         super.clear();
-        for (int i = 0; i < counters.length; i++) {
-            counters[i] = 0;
-        }
     }
+
+    /**
+     * Serializes the filter's state to a byte array. The format is:
+     * <pre>
+     * [bitArraySize][numHashFunctions][itemCount][counters.length][counters...]
+     * </pre>
+     * All integers are stored in big-endian order.
+     *
+     * @return serialized byte array representing this filter
+     */
     @Override
     public byte[] toBytes() {
         ByteBuffer buffer = ByteBuffer.allocate(4 + 4 + 8 + 4 + counters.length * 4)
@@ -85,19 +104,20 @@ public class CountingBloomFilter<T> extends AbstractBloomFilter<T> {
         buffer.putInt(numHashFunctions);
         buffer.putLong(itemCount);
         buffer.putInt(counters.length);
-        for (int i = 0; i < counters.length; i++) {
-            buffer.putInt(counters[i]);
+        for (int value : counters) {
+            buffer.putInt(value);
         }
         return buffer.array();
     }
 
-    @Override
-    public void clear() {
-        // Reset all counters and the item count via the base class implementation
-        super.clear();
-    }
-
-
+    /**
+     * Restores the filter's state from a serialized byte array. The serialized data
+     * must have been produced by {@link #toBytes()} and match this filter's
+     * configuration (bitArraySize and numHashFunctions).
+     *
+     * @param data the byte array containing the serialized state
+     * @throws IllegalArgumentException if the serialized data does not match the filter configuration
+     */
     @Override
     public void fromBytes(byte[] data) {
         if (data == null) {
