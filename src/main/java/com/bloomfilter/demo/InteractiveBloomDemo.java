@@ -2,6 +2,7 @@ package com.bloomfilter.demo;
 
 import com.bloomfilter.*;
 
+import java.io.IOException;
 import java.util.BitSet;
 import java.util.Scanner;
 
@@ -21,6 +22,9 @@ public class InteractiveBloomDemo {
 
     private static MembershipFilter<String> filter;
     private static String mode = "classic";
+    private static String green(String msg) { return "\u001B[32m" + msg + "\u001B[0m"; }
+    private static String red(String msg)   { return "\u001B[31m" + msg + "\u001B[0m"; }
+
 
     public static void main(String[] args) {
         System.out.println("\n=======================================");
@@ -96,6 +100,51 @@ public class InteractiveBloomDemo {
                     printInfo();
                     break;
 
+                case "save":
+                    if (arg == null) {
+                        System.out.println("Usage: save <filename>");
+                        break;
+                    }
+                    try {
+                        FilterIO.saveToFile(filter, arg);
+                        System.out.println(green("Filter saved to " + arg));
+                    } catch (IOException e) {
+                        System.out.println(red("Error saving: " + e.getMessage()));
+                    }
+                    break;
+
+                case "load":
+                    if (arg == null) {
+                        System.out.println(red("Usage: load <filename>"));
+                        break;
+                    }
+                    try {
+                        FilterIO.loadFromFile(filter, arg);
+                        System.out.println(green("Filter loaded from " + arg));
+                        visualize();
+                    } catch (IOException e) {
+                        System.out.println(red("Error loading: " + e.getMessage()));
+                    }
+                    break;
+
+                case "loadlist":
+                    if (arg == null) {
+                        System.out.println(green("Usage: loadlist <filename>"));
+                        break;
+                    }
+                    try {
+                        var words = FilterIO.loadWordList(arg);
+                        System.out.printf(green("Loaded %d words from %s%n"), words.size(), arg);
+                        for (String w : words) {
+                            filter.add(w);
+                        }
+                        visualize();
+                    } catch (IOException e) {
+                        System.out.println(red("Error loading list: " + e.getMessage()));
+                    }
+                    break;
+
+
                 case "help":
                     printHelp();
                     break;
@@ -106,7 +155,7 @@ public class InteractiveBloomDemo {
                     return;
 
                 default:
-                    System.out.println("Unknown command. Type 'help' for list.");
+                    System.out.println(red("Unknown command. Type 'help' for list."));
             }
         }
     }
