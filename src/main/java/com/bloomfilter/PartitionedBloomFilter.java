@@ -61,27 +61,25 @@ public class PartitionedBloomFilter<T> extends AbstractBloomFilter<T> {
         partitions[idx].add(element);
         itemCount++;
     }
-
     @Override
-    public boolean mightContain(T element) {
+    public void remove(T element) {
         if (element == null) {
-            return false;
-        }
-        int idx = choosePartition(element);
-        return partitions[idx].mightContain(element);
-    }
-
-    @Override
+         @Override
     public void remove(T element) {
         if (element == null) {
             throw new NullPointerException("element");
         }
         int idx = choosePartition(element);
-        partitions[idx].remove(element);
-        if (itemCount > 0) {
-            itemCount--;
+        if (partitions[idx] instanceof CountingBloomFilter) {
+            ((CountingBloomFilter<T>) partitions[idx]).remove(element);
+            if (itemCount > 0) {
+                itemCount--;
+            }
+        } else {
+            throw new UnsupportedOperationException("remove is not supported by PartitionedBloomFilter");
         }
     }
+
 
     @Override
     public void clear() {
