@@ -1,0 +1,170 @@
+package com.bloomfilter;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+/**
+ * Partitioned Bloom filter implementation that distributes elements across multiple sub-filters
+ * to mitigate saturation. Each element is deterministically routed to a single partition based
+ * on its hash value, ensuring that partitions remain sparse and predictable.
+ *
+ * @param <T> the type of elements stored in the filter
+ */
+public class PartitionedBloomFilter<T> extends AbstractBloomFilter<T> {
+
+    /** Array of sub-filters that together form the partitioned filter. */
+    private final ClassicBloomFilter<T>[] partitions;
+    /** Number of partitions. */
+    private final int numPartitions;
+    /** Size of each partition. */
+    private final int partitionSize;
+
+    /**
+     * Constructs a partitioned Bloom filter.
+     *
+     * @param numPartitions    the number of partitions into which the filter is divided
+     * @param partitionSize    the size of each partition's bit array
+     * @param numHashFunctions the number of hash functions used by each partition
+     */
+    @SuppressWarnings("unchecked")
+    public PartitionedBloomFilter(int numPartitions, int partitionSize, int numHashFunctions) {
+        super(numPartitions * partitionSize, numHashFunctions);
+        if (numPartitions <= 0) {
+            throw new IllegalArgumentException("numPartitions must be positive");
+        }
+        if (partitionSize <= 0) {
+            throw new IllegalArgumentException("partitionSize must be positive");
+        }
+        this.numPartitions = numPartitions;
+        this.partitionSize = partitionSize;
+        this.partitions = (ClassicBloomFilter<T>[]) new ClassicBloomFilter<?>[numPartitions];
+        for (int i = 0; i < numPartitions; i++) {
+            partitions[i] = new ClassicBloomFilter<>(partitionSize, numHashFunctions);
+        }
+    }
+
+    /**
+     * Determines which partition an element should be routed to based on its hash value.
+     *
+     * @param element the element to hash
+     * @return the index of the partition
+     */
+    private int choosePartition(T element) {
+        long[] hash = HashUtils.hash128(element.toString());
+        return (int) Math.floorMod(hash[0], numPartitions);
+    }
+
+    @Override
+    public void add(T element) {
+        if (element == null) {
+            throw new NullPointerException("element");
+        }
+        int idx = choosePartition(element);
+        partitions[idx].add(element);
+        itemCount++;
+    }
+
+    /**
+     * Removes an element from the filter by routing it to its partition and delegating to the
+     * underlying sub-filter. Removals are supported only when the partition is a
+     * {@link CountingBloomFilter}. Otherwise an {@link UnsupportedOperationException} is thrown.
+     *
+     * @param element the element to remove
+     */
+    @Override
+    public void remove(T element) {
+        if (element == null) {
+            throw new NullPointerException("element");
+        }
+        int idx = choosePartition(element);
+        try {
+            // Call remove on the sub-filter; CountingBloomFilter overrides this,
+            // ClassicBloomFilter inherits the default implementation which throws.
+            partitions[idx].remove(element);
+            if (itemCount > 0) {
+                itemCount--;
+            }
+        } catch (UnsupportedOperationException e) {
+            throw new UnsupportedOperationException(
+                    "remove is not supported by PartitionedBloomFilter"
+            );
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     *
+     * PartitionedBloomFilter delegates hashing to its sub-filters and thus does not provide
+     * direct hash indices.
+     */
+    @Override
+    protected int[] getHashIndices(T element) {
+        throw new UnsupportedOperationException("PartitionedBloomFilter delegates hashing to sub-filters");
+    }
+
+    @Override
+    protected void setBit(int index) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected boolean getBit(int index) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected void clearBit(int index) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public byte[] toBytes() {
+        byte[][] partsBytes = new byte[numPartitions][];
+        int total = 4 + 4 + 4 + 8; // numPartitions, partitionSize, numHashFunctions, itemCount
+        for (int i = 0; i < numPartitions; i++) {
+            partsBytes[i] = partitions[i].toBytes();
+            total += 4 + partsBytes[i].length;
+        }
+        ByteBuffer buffer = ByteBuffer.allocate(total).order(ByteOrder.BIG_ENDIAN);
+        buffer.putInt(numPartitions);
+        buffer.putInt(partitionSize);
+        buffer.putInt(numHashFunctions);
+        buffer.putLong(itemCount);
+        for (int i = 0; i < numPartitions; i++) {
+            buffer.putInt(partsBytes[i].length);
+            buffer.put(partsBytes[i]);
+        }
+        return buffer.array();
+    }
+
+    @Override
+    public void fromBytes(byte[] data) {
+        if (data == null) {
+            throw new NullPointerException("data");
+        }
+        ByteBuffer buffer = ByteBuffer.wrap(data).order(ByteOrder.BIG_ENDIAN);
+        int savedPartitions = buffer.getInt();
+        int savedPartitionSize = buffer.getInt();
+        int savedNumHash = buffer.getInt();
+        long savedCount = buffer.getLong();
+        if (savedPartitions != this.numPartitions || savedPartitionSize != this.partitionSize || savedNumHash != this.numHashFunctions) {
+            throw new IllegalArgumentException("Serialized data does not match filter configuration");
+        }
+        for (int i = 0; i < numPartitions; i++) {
+            int len = buffer.getInt();
+            byte[] bytes = new byte[len];
+            buffer.get(bytes);
+            partitions[i].fromBytes(bytes);
+        }
+        this.itemCount = savedCount;
+    }
+
+    @Override
+    public double estimateFalsePositiveRate() {
+        double m = (double) bitArraySize;
+        double k = (double) numHashFunctions;
+        double n = (double) itemCount;
+        return Math.pow(1.0 - Math.exp(-k * n / m), k);
+    }
+}
