@@ -134,13 +134,55 @@ public class InteractiveBloomDemo {
                     }
                     try {
                         var words = FilterIO.loadWordList(arg);
-                        System.out.printf(green("Loaded %d words from %s%n"), words.size(), arg);
+                        System.out.println(green(String.format("Loaded %d words from %s", words.size(), arg)));
                         for (String w : words) {
                             filter.add(w);
                         }
                         visualize();
                     } catch (IOException e) {
                         System.out.println(red("Error loading list: " + e.getMessage()));
+                    }
+                    break;
+
+                case "crossload":
+                    if (arg == null) {
+                        System.out.println(green("Usage: crossload <filename>"));
+                        break;
+                    }
+                    try {
+                        FilterIO.populateFromList(filter, arg);
+                        System.out.println(green(String.format(
+                                "Cross-loaded %s filter with list from %s",
+                                mode, arg)));
+                        visualize();
+                    } catch (IOException e) {
+                        System.out.println(red("Error cross-loading: " + e.getMessage()));
+                    }
+                    break;
+
+                case "ingestlist":
+                    if (arg == null) {
+                        System.out.println(green("Usage: ingestlist <input.txt> <output.bin>"));
+                        break;
+                    }
+                    String[] files = arg.split("\\s+");
+                    if (files.length < 2) {
+                        System.out.println(red("Usage: ingestlist <input.txt> <output.bin>"));
+                        break;
+                    }
+                    String inputList = files[0];
+                    String outputBin = files[1];
+                    try {
+                        var words = FilterIO.loadWordList(inputList);
+                        System.out.println(green(String.format(
+                                "Ingesting %d words from %s into %s filter...",
+                                words.size(), inputList, mode)));
+                        for (String w : words) filter.add(w);
+                        FilterIO.saveToFile(filter, outputBin);
+                        System.out.println(green("Saved standardized binary: " + outputBin));
+                        visualize();
+                    } catch (IOException e) {
+                        System.out.println(red("Error ingesting: " + e.getMessage()));
                     }
                     break;
 
@@ -195,6 +237,11 @@ public class InteractiveBloomDemo {
               clear             – reset filter
               mode <type>       – switch between classic|counting|partitioned
               info              – show current statistics
+              save <filename>     – save current filter to file
+              load <filename>     – load saved filter from file
+              loadlist <file>     – load a plain-text word list
+              ingestlist <txt> <bin> – convert plain list to standardized binary filter
+              crossload <file>    – repopulate this mode from a word list
               help              – show this list
               exit              – quit the demo
             """);

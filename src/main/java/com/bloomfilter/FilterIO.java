@@ -6,7 +6,7 @@ import java.util.*;
 
 /**
  * Utility class for persisting Bloom filters and word lists safely.
- * Adds baseline input validation and directory handling.
+ * Includes baseline input validation and cross-population helpers.
  */
 public final class FilterIO {
 
@@ -23,19 +23,18 @@ public final class FilterIO {
         try (FileOutputStream out = new FileOutputStream(filePath.toFile())) {
             out.write(filter.toBytes());
         }
+        System.out.printf("[Saved filter] %s (%d bytes)%n",
+                filePath.toAbsolutePath(), Files.size(filePath));
     }
 
     /** Loads a Bloom filter's serialized state from disk. */
     public static <T> void loadFromFile(MembershipFilter<T> filter, String path) throws IOException {
         Path filePath = Paths.get(path);
-        if (!Files.exists(filePath)) {
-            throw new FileNotFoundException("File not found: " + path);
-        }
-        if (!Files.isReadable(filePath)) {
-            throw new IOException("File not readable: " + path);
-        }
+        validateReadable(filePath);
         byte[] data = Files.readAllBytes(filePath);
         filter.fromBytes(data);
+        System.out.printf("[Loaded filter] %s (%d bytes)%n",
+                filePath.toAbsolutePath(), data.length);
     }
 
     // ------------------------------------------------------------
@@ -45,12 +44,7 @@ public final class FilterIO {
     /** Loads a simple text word list (one item per line, '#' for comments). */
     public static List<String> loadWordList(String path) throws IOException {
         Path filePath = Paths.get(path);
-        if (!Files.exists(filePath)) {
-            throw new FileNotFoundException("File not found: " + path);
-        }
-        if (!Files.isReadable(filePath)) {
-            throw new IOException("File not readable: " + path);
-        }
+        validateReadable(filePath);
 
         List<String> words = new ArrayList<>();
         try (BufferedReader reader = Files.newBufferedReader(filePath)) {
@@ -75,6 +69,20 @@ public final class FilterIO {
                 writer.newLine();
             }
         }
+        System.out.printf("[Saved list] %s (%d items)%n",
+                filePath.toAbsolutePath(), words.size());
+    }
+
+    // ------------------------------------------------------------
+    // CROSS-FILTER POPULATION
+    // ------------------------------------------------------------
+
+    /** Populates any filter with all words from a text list. */
+    public static void populateFromList(MembershipFilter<String> filter, String path) throws IOException {
+        var words = loadWordList(path);
+        System.out.printf("Populating %s with %d items from %s%n",
+                filter.getClass().getSimpleName(), words.size(), path);
+        for (String w : words) filter.add(w);
     }
 
     // ------------------------------------------------------------
@@ -88,5 +96,13 @@ public final class FilterIO {
             Files.createDirectories(parent);
             System.out.printf("[Created directory] %s%n", parent);
         }
+    }
+
+    /** Validates that a path exists and is readable. */
+    private static void validateReadable(Path path) throws IOException {
+        if (!Files.exists(path))
+            throw new FileNotFoundException("File not found: " + path);
+        if (!Files.isReadable(path))
+            throw new IOException("File not readable: " + path);
     }
 }
