@@ -5,7 +5,7 @@
 Save to:
 `/projects/bloom/README.md`
 
-```markdown
+
 # 🌸 Bloom Filter Family — Educational & Visual Java Implementation
 
 > **Version:** v0.1.0 (MVP)  
@@ -160,5 +160,4 @@ You are free to modify and extend it for educational or research purposes.
 
 *Built with persistence and curiosity — a demonstration of probabilistic data structures in action.*
 
-````
 
