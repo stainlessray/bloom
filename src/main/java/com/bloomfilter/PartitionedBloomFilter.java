@@ -12,17 +12,19 @@ import java.nio.ByteOrder;
  */
 public class PartitionedBloomFilter<T> extends AbstractBloomFilter<T> {
 
+    /** Array of sub-filters that together form the partitioned filter. */
     private final ClassicBloomFilter<T>[] partitions;
+    /** Number of partitions. */
     private final int numPartitions;
+    /** Size of each partition. */
     private final int partitionSize;
 
     /**
-     * Creates a new PartitionedBloomFilter with the specified number of partitions, partition size
-     * and number of hash functions.
+     * Constructs a partitioned Bloom filter.
      *
-     * @param numPartitions    the number of partitions
+     * @param numPartitions    the number of partitions into which the filter is divided
      * @param partitionSize    the size of each partition's bit array
-     * @param numHashFunctions the number of hash functions for each partition
+     * @param numHashFunctions the number of hash functions used by each partition
      */
     @SuppressWarnings("unchecked")
     public PartitionedBloomFilter(int numPartitions, int partitionSize, int numHashFunctions) {
@@ -61,10 +63,15 @@ public class PartitionedBloomFilter<T> extends AbstractBloomFilter<T> {
         partitions[idx].add(element);
         itemCount++;
     }
+
+    /**
+     * Removes an element from the filter by routing it to its partition and delegating to the
+     * underlying sub-filter. Removals are supported only when the partition is a
+     * {@link CountingBloomFilter}. Otherwise an {@link UnsupportedOperationException} is thrown.
+     *
+     * @param element the element to remove
+     */
     @Override
-    public void remove(T element) {
-        if (element == null) {
-         @Override
     public void remove(T element) {
         if (element == null) {
             throw new NullPointerException("element");
@@ -80,7 +87,6 @@ public class PartitionedBloomFilter<T> extends AbstractBloomFilter<T> {
         }
     }
 
-
     @Override
     public void clear() {
         for (ClassicBloomFilter<T> partition : partitions) {
@@ -89,6 +95,12 @@ public class PartitionedBloomFilter<T> extends AbstractBloomFilter<T> {
         itemCount = 0;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * PartitionedBloomFilter delegates hashing to its sub-filters and thus does not provide
+     * direct hash indices.
+     */
     @Override
     protected int[] getHashIndices(T element) {
         throw new UnsupportedOperationException("PartitionedBloomFilter delegates hashing to sub-filters");
