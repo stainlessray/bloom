@@ -306,8 +306,8 @@ public class InteractiveBloomDemo {
                   info                   – show current statistics
                   save <filename>        – save current filter to file
                   load <filename>        – load saved filter from file
-                  loadstd <file>     – load standardized .bin (with metadata)
-                  loadmeta <file>    – inspect metadata header only
+                  loadstd <file>         – load standardized .bin (with metadata)
+                  loadmeta <file>        – inspect metadata header only
                   loadlist <file>        – load a plain-text word list
                   ingestlist <txt> <bin> – convert plain list to standardized binary filter
                   crossload <file>       – repopulate this mode from a word list
