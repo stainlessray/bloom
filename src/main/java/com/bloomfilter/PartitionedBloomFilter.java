@@ -77,23 +77,20 @@ public class PartitionedBloomFilter<T> extends AbstractBloomFilter<T> {
             throw new NullPointerException("element");
         }
         int idx = choosePartition(element);
-        if (partitions[idx] instanceof CountingBloomFilter) {
-            ((CountingBloomFilter<T>) partitions[idx]).remove(element);
+        try {
+            // Call remove on the sub-filter; CountingBloomFilter overrides this,
+            // ClassicBloomFilter inherits the default implementation which throws.
+            partitions[idx].remove(element);
             if (itemCount > 0) {
                 itemCount--;
             }
-        } else {
-            throw new UnsupportedOperationException("remove is not supported by PartitionedBloomFilter");
+        } catch (UnsupportedOperationException e) {
+            throw new UnsupportedOperationException(
+                    "remove is not supported by PartitionedBloomFilter"
+            );
         }
     }
 
-    @Override
-    public void clear() {
-        for (ClassicBloomFilter<T> partition : partitions) {
-            partition.clear();
-        }
-        itemCount = 0;
-    }
 
     /**
      * {@inheritDoc}
