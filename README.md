@@ -1,9 +1,7 @@
----
+
 
 ## 🧭 `README.md`
 
-Save to:
-`/projects/bloom/README.md`
 
 
 # 🌸 Bloom Filter Family — Educational & Visual Java Implementation
