@@ -173,18 +173,14 @@ public class InteractiveBloomDemo {
                     String inputList = files[0];
                     String outputBin = files[1];
                     try {
-                        var words = FilterIO.loadWordList(inputList);
-                        System.out.println(green(String.format(
-                                "Ingesting %d words from %s into %s filter...",
-                                words.size(), inputList, mode)));
-                        for (String w : words) filter.add(w);
-                        FilterIO.saveToFile(filter, outputBin);
-                        System.out.println(green("Saved standardized binary: " + outputBin));
+                        FilterIO.ingestListToBinary(filter, inputList, outputBin);
+                        System.out.println(green("Ingestion complete and saved to " + outputBin));
                         visualize();
                     } catch (IOException e) {
-                        System.out.println(red("Error ingesting: " + e.getMessage()));
+                        System.out.println(red("Error during ingestion: " + e.getMessage()));
                     }
                     break;
+
 
 
                 case "help":
@@ -231,19 +227,19 @@ public class InteractiveBloomDemo {
     private static void printHelp() {
         System.out.println("""
             Commands:
-              add <word>        – insert element
-              check <word>      – test membership
-              remove <word>     – remove (only in counting mode)
-              clear             – reset filter
-              mode <type>       – switch between classic|counting|partitioned
-              info              – show current statistics
-              save <filename>     – save current filter to file
-              load <filename>     – load saved filter from file
-              loadlist <file>     – load a plain-text word list
+              add <word>             – insert element
+              check <word>           – test membership
+              remove <word>          – remove (only in counting mode)
+              clear                  – reset filter
+              mode <type>            – switch between classic|counting|partitioned
+              info                   – show current statistics
+              save <filename>        – save current filter to file
+              load <filename>        – load saved filter from file
+              loadlist <file>        – load a plain-text word list
               ingestlist <txt> <bin> – convert plain list to standardized binary filter
-              crossload <file>    – repopulate this mode from a word list
-              help              – show this list
-              exit              – quit the demo
+              crossload <file>       – repopulate this mode from a word list
+              help                   – show this list
+              exit                   – quit the demo
             """);
     }
 

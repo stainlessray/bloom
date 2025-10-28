@@ -105,4 +105,60 @@ public final class FilterIO {
         if (!Files.isReadable(path))
             throw new IOException("File not readable: " + path);
     }
+
+    // ------------------------------------------------------------
+// INGESTION & STANDARDIZATION
+// ------------------------------------------------------------
+
+    /**
+     * Builds a Bloom filter from a plain text list and saves as standardized binary.
+     */
+    public static void ingestListToBinary(MembershipFilter<String> filter, String txtPath, String binPath)
+            throws IOException {
+        var words = loadWordList(txtPath);
+        System.out.printf("Ingesting %d words from %s...%n", words.size(), txtPath);
+
+        for (String w : words) filter.add(w);
+
+        // --- Save metadata ---
+        FilterMetadata meta = new FilterMetadata(
+                filter.getClass().getSimpleName(),
+                (filter instanceof AbstractBloomFilter<?> af) ? af.getBitArraySize() : -1,
+                (filter instanceof AbstractBloomFilter<?> af) ? af.getHashCount() : -1,
+                txtPath
+        );
+
+        Path filePath = Paths.get(binPath);
+        ensureParentExists(filePath);
+
+        try (FileOutputStream out = new FileOutputStream(filePath.toFile());
+             ObjectOutputStream oos = new ObjectOutputStream(out)) {
+            oos.writeObject(meta);
+            oos.writeObject(filter.toBytes());
+        }
+
+        System.out.printf("[Standardized binary created] %s%n%s%n",
+                filePath.toAbsolutePath(), meta.summary());
+    }
+
+    /**
+     * Loads a Bloom filter and metadata from a standardized binary (.bin).
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> FilterLoadResult<T> loadStandardizedBinary(MembershipFilter<T> filter, String path)
+            throws IOException, ClassNotFoundException {
+        Path filePath = Paths.get(path);
+        validateReadable(filePath);
+
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filePath.toFile()))) {
+            FilterMetadata meta = (FilterMetadata) ois.readObject();
+            byte[] data = (byte[]) ois.readObject();
+            filter.fromBytes(data);
+            return new FilterLoadResult<>(meta, filter);
+        }
+    }
+
+    /** Small holder for loaded filter and its metadata. */
+    public record FilterLoadResult<T>(FilterMetadata metadata, MembershipFilter<T> filter) {}
+
 }
