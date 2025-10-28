@@ -1,8 +1,8 @@
 package com.bloomfilter;
 
 import com.bloomfilter.ClassicBloomFilter;
-import org.junit.Test;
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test suite for Bloom filter implementations. Validates core functional
@@ -25,7 +25,7 @@ public class BloomFilterTest {
             filter.add(e);
         }
         for (String e : elements) {
-            assertTrue("False negative for " + e, filter.mightContain(e));
+            assertTrue(filter.mightContain(e), "False negative for " + e);
         }
     }
 
