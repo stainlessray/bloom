@@ -72,8 +72,9 @@ java -cp target/classes com.bloomfilter.demo.InteractiveBloomDemo
  BLOOM FILTER INTERACTIVE DEMO 
 =======================================
 
-Switched to classic mode.
 > mode classic
+Switched to classic mode.
+
 > ingestlist src/main/resources/data/fruit.txt filters/fruit.bin
 Ingesting 15 words from src/main/resources/data/fruit.txt...
 [Standardized binary created] /home/ray/projects/bloom/filters/fruit.bin
@@ -87,20 +88,20 @@ Bits: ··█·██████··██···█···█·········�
 
 ## 🧰 Commands
 
-| Command                               | Description                                                      |               |                                |
-| ------------------------------------- | ---------------------------------------------------------------- | ------------- | ------------------------------ |
-| `add <word>`                          | Inserts a new element.                                           |               |                                |
-| `check <word>`                        | Tests for membership.                                            |               |                                |
-| `remove <word>`                       | Removes an element (counting mode only).                         |               |                                |
-| `clear`                               | Clears all bits/counters.                                        |               |                                |
-| `mode <classic                        | counting                                                         | partitioned>` | Switches between filter types. |
-| `info`                                | Displays stats and estimated FPR.                                |               |                                |
-| `loadlist <file>`                     | Loads a word list (`.txt`) and adds to the active filter.        |               |                                |
+| Command                              | Description                                                       |               |                                |
+| ------------------------------------ |-------------------------------------------------------------------|---------------|--------------------------------|
+| `add <word>`                         | Inserts a new element.                                            |               |                                |
+| `check <word>`                       | Tests for membership.                                             |               |                                |
+| `remove <word>`                      | Removes an element (counting mode only).                          |               |                                |
+| `clear`                              | Clears all bits/counters.                                         |               |                                |
+| `mode <classic counting partitioned>`| Switches between filter types.                                    |               |                                |
+| `info`                               | Displays stats and estimated FPR.                                 |               |                                |
+| `loadlist <file>`                    | Loads a word list (`.txt`) and adds to the active filter.         |               |                                |
 | `ingestlist <input.txt> <output.bin>` | Converts a `.txt` list into a standardized `.bin` with metadata. |               |                                |
-| `save <file>`                         | Serializes the current filter state to disk.                     |               |                                |
-| `load <file>`                         | Loads a previously saved filter.                                 |               |                                |
-| `help`                                | Shows command help.                                              |               |                                |
-| `exit`                                | Quits the demo.                                                  |               |                                |
+| `save <file>`                        | Serializes the current filter state to disk.                      |               |                                |
+| `load <file>`                        | Loads a previously saved filter.                                  |               |                                |
+| `help`                               | Shows command help.                                               |               |                                |
+| `exit`                               | Quits the demo.                                                   |               |                                |
 
 ---
 
