@@ -3,9 +3,9 @@ package com.bloomfilter.demo;
 import com.bloomfilter.*;
 
 import java.io.File;
-import java.io.FileInputStream;
+
 import java.io.IOException;
-import java.io.ObjectInputStream;
+
 import java.util.BitSet;
 import java.util.Scanner;
 
@@ -126,34 +126,16 @@ public class InteractiveBloomDemo {
                         System.out.println(red("Usage: load <filename>"));
                         break;
                     }
-                    File file = new File(arg);
-                    if (!file.exists()) {
-                        System.out.println(red("File not found: " + arg));
-                        break;
-                    }
-
-                    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-                        Object first = ois.readObject();
-
-                        if (first instanceof FilterMetadata meta) {
-                            // --- Standardized binary format ---
-                            byte[] data = (byte[]) ois.readObject();
-                            filter.fromBytes(data);
-                            System.out.println(green("Standardized filter loaded successfully."));
-                            System.out.println(green(meta.summary()));
-                        } else if (first instanceof byte[] bytes) {
-                            // --- Legacy format (raw filter bytes only) ---
-                            filter.fromBytes(bytes);
-                            System.out.println(green("Legacy filter loaded successfully."));
-                        } else {
-                            System.out.println(red("Unrecognized file format: " + arg));
-                        }
+                    try {
+                        // old logic
+                        FilterIO.loadFromFile(filter, arg);
+                        System.out.println(green("Filter loaded from " + arg));
                         visualize();
-
-                    } catch (IOException | ClassNotFoundException e) {
+                    } catch (IOException e) {
                         System.out.println(red("Error loading: " + e.getMessage()));
                     }
                     break;
+
 
                 case "loadstd":
                     if (arg == null) {
@@ -161,11 +143,11 @@ public class InteractiveBloomDemo {
                         break;
                     }
                     try {
-                        var loadResult = FilterIO.loadStandardizedBinary(filter, arg);
+                        FilterIO.loadFromFile(filter, arg);
                         System.out.println(green("Standardized filter loaded successfully."));
-                        System.out.println(green(loadResult.metadata().summary()));
+                        FilterIO.metadata(arg); // optional: quick header preview
                         visualize();
-                    } catch (IOException | ClassNotFoundException e) {
+                    } catch (IOException e) {
                         System.out.println(red("Error loading standardized binary: " + e.getMessage()));
                     }
                     break;
@@ -175,14 +157,14 @@ public class InteractiveBloomDemo {
                         System.out.println(red("Usage: loadmeta <filename>"));
                         break;
                     }
-                    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(arg))) {
-                        FilterMetadata meta = (FilterMetadata) ois.readObject();
+                    try {
                         System.out.println(green("Metadata for " + arg + ":"));
-                        System.out.println(meta.summary());
-                    } catch (Exception e) {
+                        FilterIO.metadata(arg); // uses standardized binary header
+                    } catch (IOException e) {
                         System.out.println(red("Error reading metadata: " + e.getMessage()));
                     }
                     break;
+
 
                 case "loadlist":
                     if (arg == null) {
@@ -212,26 +194,17 @@ public class InteractiveBloomDemo {
                         break;
                     }
 
-                    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(xFile))) {
-                        Object first = ois.readObject();
-
-                        if (first instanceof FilterMetadata meta) {
-                            byte[] data = (byte[]) ois.readObject();
-                            filter.fromBytes(data);
-                            System.out.println(green("Standardized filter cross-loaded successfully."));
-                            System.out.println(green(meta.summary()));
-                        } else if (first instanceof byte[] bytes) {
-                            filter.fromBytes(bytes);
-                            System.out.println(green("Legacy filter cross-loaded successfully."));
-                        } else {
-                            System.out.println(red("Unrecognized file format: " + arg));
-                        }
+                    try {
+                        // Load standardized binary directly
+                        FilterIO.loadFromFile(filter, arg);
+                        System.out.println(green("Standardized filter cross-loaded successfully."));
+                        FilterIO.metadata(arg);
                         visualize();
-
-                    } catch (IOException | ClassNotFoundException e) {
+                    } catch (IOException e) {
                         System.out.println(red("Error cross-loading: " + e.getMessage()));
                     }
                     break;
+
 
                 case "ingestlist":
                     if (arg == null) {
