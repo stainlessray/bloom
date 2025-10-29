@@ -1,164 +1,126 @@
 package com.bloomfilter;
 
-import java.io.*;
+import java.io.IOException;
 import java.nio.file.*;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
-/**
- * Utility class for persisting Bloom filters and word lists safely.
- * Includes baseline input validation and cross-population helpers.
- */
-public final class FilterIO {
+public class FilterIO {
 
-    private FilterIO() {}
+    /** Save any filter using standardized binary serialization (ByteBuffer format). */
+    public static void saveToFile(MembershipFilter<?> filter, String filename) throws IOException {
+        Path path = Paths.get(filename);
+        Files.createDirectories(path.getParent());
 
-    // ------------------------------------------------------------
-    // SAVE / LOAD FILTERS
-    // ------------------------------------------------------------
-
-    /** Saves a Bloom filter's serialized bytes to disk. */
-    public static void saveToFile(MembershipFilter<?> filter, String path) throws IOException {
-        Path filePath = Paths.get(path);
-        ensureParentExists(filePath);
-        try (FileOutputStream out = new FileOutputStream(filePath.toFile())) {
-            out.write(filter.toBytes());
+        if (!(filter instanceof AbstractBloomFilter<?> af)) {
+            throw new IOException("Unsupported filter type for standardized save.");
         }
-        System.out.printf("[Saved filter] %s (%d bytes)%n",
-                filePath.toAbsolutePath(), Files.size(filePath));
+
+        byte[] data = af.toBytes();
+        Files.write(path, data);
+        System.out.printf("[Saved standardized filter] %s (%d bytes)%n",
+                path.toAbsolutePath(), data.length);
     }
 
-    /** Loads a Bloom filter's serialized state from disk. */
-    public static <T> void loadFromFile(MembershipFilter<T> filter, String path) throws IOException {
-        Path filePath = Paths.get(path);
-        validateReadable(filePath);
-        byte[] data = Files.readAllBytes(filePath);
-        filter.fromBytes(data);
-        System.out.printf("[Loaded filter] %s (%d bytes)%n",
-                filePath.toAbsolutePath(), data.length);
-    }
+    /** Load any standardized binary filter back into the given filter instance. */
+    public static void loadFromFile(MembershipFilter<?> filter, String filename) throws IOException {
+        Path path = Paths.get(filename);
+        if (!Files.exists(path)) throw new IOException("File not found: " + filename);
 
-    // ------------------------------------------------------------
-    // LOAD / SAVE WORD LISTS
-    // ------------------------------------------------------------
-
-    /** Loads a simple text word list (one item per line, '#' for comments). */
-    public static List<String> loadWordList(String path) throws IOException {
-        Path filePath = Paths.get(path);
-        validateReadable(filePath);
-
-        List<String> words = new ArrayList<>();
-        try (BufferedReader reader = Files.newBufferedReader(filePath)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                if (!line.isEmpty() && !line.startsWith("#")) {
-                    words.add(line);
-                }
-            }
+        byte[] data = Files.readAllBytes(path);
+        if (!(filter instanceof AbstractBloomFilter<?> af)) {
+            throw new IOException("Unsupported filter type for standardized load.");
         }
-        return words;
-    }
 
-    /** Writes a collection of words to disk (one per line). */
-    public static void saveWordList(Collection<String> words, String path) throws IOException {
-        Path filePath = Paths.get(path);
-        ensureParentExists(filePath);
-        try (BufferedWriter writer = Files.newBufferedWriter(filePath)) {
-            for (String word : words) {
-                writer.write(word);
-                writer.newLine();
-            }
-        }
-        System.out.printf("[Saved list] %s (%d items)%n",
-                filePath.toAbsolutePath(), words.size());
-    }
-
-    // ------------------------------------------------------------
-    // CROSS-FILTER POPULATION
-    // ------------------------------------------------------------
-
-    /** Populates any filter with all words from a text list. */
-    public static void populateFromList(MembershipFilter<String> filter, String path) throws IOException {
-        var words = loadWordList(path);
-        System.out.printf("Populating %s with %d items from %s%n",
-                filter.getClass().getSimpleName(), words.size(), path);
-        for (String w : words) filter.add(w);
-    }
-
-    // ------------------------------------------------------------
-    // INTERNAL UTILITIES
-    // ------------------------------------------------------------
-
-    /** Ensures the parent directory exists before writing a file. */
-    private static void ensureParentExists(Path filePath) throws IOException {
-        Path parent = filePath.toAbsolutePath().getParent();
-        if (parent != null && !Files.exists(parent)) {
-            Files.createDirectories(parent);
-            System.out.printf("[Created directory] %s%n", parent);
+        try {
+            af.fromBytes(data);
+            System.out.println("Standardized filter loaded successfully.");
+        } catch (Exception e) {
+            throw new IOException("Error loading standardized filter: " + e.getMessage(), e);
         }
     }
 
-    /** Validates that a path exists and is readable. */
-    private static void validateReadable(Path path) throws IOException {
-        if (!Files.exists(path))
-            throw new FileNotFoundException("File not found: " + path);
-        if (!Files.isReadable(path))
-            throw new IOException("File not readable: " + path);
+    // ------------------------------------------------------------------------
+    // Word list ingestion utilities
+    // ------------------------------------------------------------------------
+
+    /** Loads a text file into a list of strings (trimmed, non-empty lines). */
+    public static List<String> loadWordList(String filename) throws IOException {
+        return Files.readAllLines(Paths.get(filename))
+                .stream()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty() && !s.startsWith("#"))
+                .toList();
     }
 
-    // ------------------------------------------------------------
-// INGESTION & STANDARDIZATION
-// ------------------------------------------------------------
+    /** Ingest a text list and produce a standardized binary filter in the given output folder. */
+    public static void ingestListToBinary(MembershipFilter<String> filter, String input, String outputDir) throws IOException {
+        List<String> words = loadWordList(input);
+        System.out.printf("Ingesting %d words from %s...%n", words.size(), input);
+
+        for (String w : words) {
+            filter.add(w);
+        }
+
+        String listName = Paths.get(input).getFileName().toString().replaceFirst("\\.txt$", "");
+        String algo = filter.getClass().getSimpleName();
+        String sizeInfo = "";
+
+        if (filter instanceof AbstractBloomFilter<?> af) {
+            int m = af.getBitArraySize();
+            int k = af.getHashCount();
+            sizeInfo = "_m" + m + "_k" + k;
+        }
+
+        if (filter instanceof PartitionedBloomFilter<?> pbf) {
+            sizeInfo = String.format("_p%dx%d_k%d", pbf.getPartitionCount(),
+                    pbf.getPartitionSize(), pbf.getHashCount());
+        }
+
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String filename = String.format("%s/%s_%s%s_v%s.bin", outputDir, listName, algo, sizeInfo, timestamp);
+
+        Path outPath = Paths.get(filename);
+        Files.createDirectories(outPath.getParent());
+
+        assert filter instanceof AbstractBloomFilter<?>;
+        byte[] data = filter.toBytes();
+        Files.write(outPath, data);
+
+        System.out.printf("[Standardized binary created] %s%n", outPath.toAbsolutePath());
+        System.out.printf("Algorithm=%s | Bits=%d | Hashes=%d | Source=%s | Created=%s%n",
+                algo,
+                ((AbstractBloomFilter<?>) filter).getBitArraySize(),
+                ((AbstractBloomFilter<?>) filter).getHashCount(),
+                input,
+                LocalDateTime.now());
+        System.out.println("Ingestion complete and saved to " + outputDir);
+    }
+    // ------------------------------------------------------------------------
+    // Metadata inspection
+    // ------------------------------------------------------------------------
 
     /**
-     * Builds a Bloom filter from a plain text list and saves as standardized binary.
+     * Reads standardized filter metadata without loading the full filter.
+     * Works for any filter created with the standardized binary format.
      */
-    public static void ingestListToBinary(MembershipFilter<String> filter, String txtPath, String binPath)
-            throws IOException {
-        var words = loadWordList(txtPath);
-        System.out.printf("Ingesting %d words from %s...%n", words.size(), txtPath);
+    public static void metadata(String filename) throws IOException {
+        Path path = Paths.get(filename);
+        if (!Files.exists(path)) throw new IOException("File not found: " + filename);
 
-        for (String w : words) filter.add(w);
+        byte[] header = Files.readAllBytes(path);
+        if (header.length < 16) throw new IOException("File too short to contain metadata");
 
-        // --- Save metadata ---
-        FilterMetadata meta = new FilterMetadata(
-                filter.getClass().getSimpleName(),
-                (filter instanceof AbstractBloomFilter<?> af) ? af.getBitArraySize() : -1,
-                (filter instanceof AbstractBloomFilter<?> af) ? af.getHashCount() : -1,
-                txtPath
-        );
+        // These are the first fields written in AbstractBloomFilter / PartitionedBloomFilter
+        int first = ((header[0] & 0xFF) << 24) | ((header[1] & 0xFF) << 16)
+                | ((header[2] & 0xFF) << 8) | (header[3] & 0xFF);
+        int second = ((header[4] & 0xFF) << 24) | ((header[5] & 0xFF) << 16)
+                | ((header[6] & 0xFF) << 8) | (header[7] & 0xFF);
+        int third = ((header[8] & 0xFF) << 24) | ((header[9] & 0xFF) << 16)
+                | ((header[10] & 0xFF) << 8) | (header[11] & 0xFF);
 
-        Path filePath = Paths.get(binPath);
-        ensureParentExists(filePath);
-
-        try (FileOutputStream out = new FileOutputStream(filePath.toFile());
-             ObjectOutputStream oos = new ObjectOutputStream(out)) {
-            oos.writeObject(meta);
-            oos.writeObject(filter.toBytes());
-        }
-
-        System.out.printf("[Standardized binary created] %s%n%s%n",
-                filePath.toAbsolutePath(), meta.summary());
+        System.out.printf("Metadata (approx): m=%d | k=%d | n≈%d%n", first, second, third);
     }
-
-    /**
-     * Loads a Bloom filter and metadata from a standardized binary (.bin).
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> FilterLoadResult<T> loadStandardizedBinary(MembershipFilter<T> filter, String path)
-            throws IOException, ClassNotFoundException {
-        Path filePath = Paths.get(path);
-        validateReadable(filePath);
-
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filePath.toFile()))) {
-            FilterMetadata meta = (FilterMetadata) ois.readObject();
-            byte[] data = (byte[]) ois.readObject();
-            filter.fromBytes(data);
-            return new FilterLoadResult<>(meta, filter);
-        }
-    }
-
-    /** Small holder for loaded filter and its metadata. */
-    public record FilterLoadResult<T>(FilterMetadata metadata, MembershipFilter<T> filter) {}
 
 }

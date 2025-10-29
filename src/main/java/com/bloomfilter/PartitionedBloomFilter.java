@@ -77,6 +77,20 @@ public class PartitionedBloomFilter<T> extends AbstractBloomFilter<T> {
         if (verbose) System.out.println(" → All partitions cleared.");
     }
 
+    // ------------------------------------------------------------
+    // Accessors for metadata / introspection
+    // ------------------------------------------------------------
+
+    /** Number of partitions configured in this filter. */
+    public int getPartitionCount() {
+        return numPartitions;
+    }
+
+    /** Bit array size (m) per partition. */
+    public int getPartitionSize() {
+        return partitionSize;
+    }
+
     @Override
     protected int[] getHashIndices(T element) {
         throw new UnsupportedOperationException("Delegated to sub-filters");
