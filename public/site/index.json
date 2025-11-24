@@ -1,0 +1,28 @@
+[
+  {
+    "id": "bloom-event-2025-11-24-001",
+    "slug": "bloom",
+    "title": "Microsite & Evergreen Contract live",
+    "level": "event",
+    "purpose": "announcement",
+    "summary": "Launched stainlessray.com/public/site with evergreen index, markdown details, and an overview homepage.",
+    "date": "2025-11-24",
+    "repo": "stainlessray/bloom",
+    "source": {
+      "type": "manual",
+      "ref": "microsite-bootstrap",
+      "label": "Initial microsite publish",
+      "url": "https://stainlessray.com/public/site"
+    },
+    "paths": {
+      "micro_site_home": "index.html",
+      "resources": [],
+      "details_md": "details/bloom-event-2025-11-24-001.md"
+    },
+    "meta": {
+      "tags": ["microsite", "evergreen", "docs"],
+      "priority": 5,
+      "version": "1.0"
+    }
+  }
+]
