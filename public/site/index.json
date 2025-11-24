@@ -12,7 +12,7 @@
       "type": "manual",
       "ref": "microsite-bootstrap",
       "label": "Initial microsite publish",
-      "url": "https://stainlessray.com/public/site"
+      "url": "https://github.com/stainlessray/bloom"
     },
     "paths": {
       "micro_site_home": "index.html",
