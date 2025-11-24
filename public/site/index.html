@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bloom Filter Lab</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #0b1220;
+      --card: #111a2e;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #7dd3fc;
+      --accent-2: #a855f7;
+      --code-bg: #0a101f;
+      --code-border: #1f2937;
+      --shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Work Sans", "Manrope", sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(125, 211, 252, 0.08), transparent 35%),
+                  radial-gradient(circle at 80% 10%, rgba(168, 85, 247, 0.08), transparent 30%),
+                  radial-gradient(circle at 50% 80%, rgba(56, 189, 248, 0.06), transparent 35%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 32px 16px 48px;
+    }
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    header.hero {
+      background: linear-gradient(135deg, rgba(125, 211, 252, 0.1), rgba(168, 85, 247, 0.08));
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+    }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    h1 {
+      margin: 0 0 12px 0;
+      font-size: 32px;
+      letter-spacing: -0.02em;
+    }
+    .lead {
+      margin: 0 0 12px 0;
+      color: var(--muted);
+      max-width: 720px;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .pill {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    section {
+      margin-top: 26px;
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 22px 20px;
+      box-shadow: var(--shadow);
+    }
+    h2 {
+      margin-top: 0;
+      letter-spacing: -0.01em;
+    }
+    p { color: var(--muted); }
+    ul { color: var(--muted); padding-left: 18px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 8px 6px;
+      text-align: left;
+      color: var(--muted);
+    }
+    th { color: var(--text); font-weight: 600; }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 12px;
+      padding: 12px;
+      overflow-x: auto;
+      color: #e5e7eb;
+      font-size: 14px;
+      line-height: 1.5;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+    code {
+      font-family: "JetBrains Mono", "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+    }
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(125, 211, 252, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(125, 211, 252, 0.3);
+      font-size: 12px;
+      margin-right: 8px;
+      margin-bottom: 6px;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+    .resources {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .resource-link {
+      padding: 10px 14px;
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+    @media (max-width: 720px) {
+      body { padding: 18px 14px; }
+      h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="eyebrow">Bloom Filter Lab · Educational Microsite</div>
+      <h1>Probabilistic membership, visualized and hands-on</h1>
+      <p class="lead">
+        Explore classic, counting, and partitioned Bloom filters with a runnable CLI demo.
+        Learn the mechanics, tradeoffs, and roadmap while keeping artifacts portable via the evergreen contract.
+      </p>
+      <div class="meta-row">
+        <span class="pill">Slug: bloom</span>
+        <span class="pill">Repo: stainlessray/bloom</span>
+        <span class="pill">Host: stainlessray.com/public/site</span>
+        <span class="pill">Version: v0.1.1 demo</span>
+      </div>
+    </header>
+
+    <section id="what">
+      <h2>What is a Bloom filter?</h2>
+      <p>The Bloom filter is a probabilistic checklist that answers “have I seen this item?” with minimal memory.</p>
+      <ul>
+        <li>If it says <strong>no</strong>, the item is definitely absent.</li>
+        <li>If it says <strong>yes</strong>, the item is probably present (false positives are possible).</li>
+        <li>Invented by Burton Howard Bloom (1970) to save memory in dictionary lookups.</li>
+      </ul>
+      <div class="grid">
+        <div class="card">
+          <strong>Core mechanics</strong>
+          <ul>
+            <li>Bit array initialized to 0.</li>
+            <li>Multiple hash functions map an item to k bit positions.</li>
+            <li>Add: set those bits to 1. Check: if any mapped bit is 0, item is absent.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Literal view</strong>
+          <pre><code>{ apple, banana, cherry }
+
+bits = 0 0 0 0 0 0 0 0 0 0
+apple  -> set 2,4,8
+banana -> set 1,4,7
+cherry -> set 3,6,9
+
+bits = 0 1 1 1 1 0 1 1 1 1</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="variants">
+      <h2>Variants and tradeoffs</h2>
+      <table>
+        <thead>
+          <tr><th>Variant</th><th>Why use it</th><th>Tradeoff</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Classic</td><td>Fast membership checks for static sets</td><td>No deletions; saturates over time</td></tr>
+          <tr><td>Counting</td><td>Supports deletion via counters</td><td>Uses more memory</td></tr>
+          <tr><td>Partitioned</td><td>Distributes load across partitions</td><td>Slightly higher compute overhead</td></tr>
+          <tr><td>Scalable</td><td>Expands with new filters as load grows</td><td>More complex storage/management</td></tr>
+          <tr><td>Cuckoo filter</td><td>Low FPR with deletions baked in</td><td>More complex insertion logic</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="learn">
+      <h2>Learn by doing</h2>
+      <div class="grid">
+        <div class="card">
+          <strong>Launch the interactive demo</strong>
+          <pre><code>mvn clean package
+java -cp target/classes com.bloomfilter.demo.InteractiveBloomDemo</code></pre>
+          <p>Switch modes: <code>mode classic</code> | <code>mode counting</code> | <code>mode partitioned</code></p>
+        </div>
+        <div class="card">
+          <strong>Standardized ingestion</strong>
+          <pre><code>mode classic
+ingestlist src/main/resources/data/fruit.txt filters/
+loadstd filters/fruit_Classic_m64_k3_vYYYYMMDDHHMMSS.bin</code></pre>
+          <p>Creates a portable <code>.bin</code> with metadata (algorithm, bits, hashes, source, timestamp).</p>
+        </div>
+        <div class="card">
+          <strong>Sample session</strong>
+          <pre><code>mode counting
+ingestlist src/main/resources/data/fruit.txt filters/
+check cherry
+remove cherry
+save filters/fruit_Counting_m64_k3.bin</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="education">
+      <h2>Educational path</h2>
+      <p>Concepts covered so far:</p>
+      <div class="grid">
+        <div class="card">
+          <span class="tag">Bit-level tracking</span>
+          <span class="tag">Hash multi-mapping</span>
+          <span class="tag">False positives</span>
+          <span class="tag">Deletion via counters</span>
+          <span class="tag">Partitioning</span>
+          <span class="tag">Persistence + metadata</span>
+          <span class="tag">Saturation</span>
+        </div>
+        <div class="card">
+          <strong>What comes next</strong>
+          <ul>
+            <li>Capacity planning (m, k) for target false-positive rates.</li>
+            <li>Scalable and distributed Bloom filters.</li>
+            <li>Compressed filters and hybrid designs.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <h2>Roadmap</h2>
+      <ul>
+        <li><strong>v0.2</strong>: loadmeta command, enhanced CLI help.</li>
+        <li><strong>v0.3</strong>: Docker sandbox for browser-based testing.</li>
+        <li>Future: optimization and educational refinements.</li>
+      </ul>
+    </section>
+
+    <section id="resources">
+      <h2>Resources</h2>
+      <div class="resources">
+        <a class="resource-link" href="https://github.com/stainlessray/bloom" target="_blank" rel="noopener noreferrer">Repository</a>
+        <a class="resource-link" href="https://stainlessray.com/public/site/index.json" target="_blank" rel="noopener noreferrer">Evergreen index.json</a>
+        <a class="resource-link" href="https://stainlessray.com/public/site/details/" target="_blank" rel="noopener noreferrer">Details directory</a>
+        <a class="resource-link" href="https://stainlessray.com/ABOUT_BLOOM_FILTERS.md" target="_blank" rel="noopener noreferrer">ABOUT_BLOOM_FILTERS.md</a>
+        <a class="resource-link" href="https://stainlessray.com/EDUCATIVE.md" target="_blank" rel="noopener noreferrer">EDUCATIVE.md</a>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
